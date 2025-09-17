@@ -1,4 +1,10 @@
 import discord
+import os
+
+from dotenv import load_dotenv
+
+load_dotenv()
+TOKEN = os.getenv()
 
 # main.py
 
@@ -8,6 +14,8 @@ import discord
 #  TODO: 1. Create general idea for the bot. Ideally it should have a command line that can be used within discord. 
 #           Additional functions should be used as well. 
 #  TODO 2:  Find libraries we can use for the bot. Github should have hella options. 
+
+
 
 
 client = discord.Client(intents=intents)
