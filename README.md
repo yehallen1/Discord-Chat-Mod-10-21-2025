@@ -6,5 +6,6 @@ See [slides](https://docs.google.com/presentation/d/17DJmoD6WFfxd9AiNUDRIPs4ZdAO
 
 ## Usage
 1. Clone repository 
-2. This project has dependencies. To install these, use `pip install -r requirements.txt`
-3. Start the bot with `python3 main.py`
+2. Add your tokens into [tokens.env](https://github.com/Nbkvig/Discord-Chat-Mod/blob/main/tokens.env). Rename your tokens file to ".env". 
+3. This project has dependencies. To install these, use `pip install -r requirements.txt`
+4. Start the bot with `python3 main.py`
