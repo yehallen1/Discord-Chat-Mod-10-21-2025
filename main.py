@@ -1,21 +1,27 @@
-import discord
 import os
-
+import discord
+from discord.ext import commands
 from dotenv import load_dotenv 
 
+# Token stuff
 load_dotenv()
-TOKEN = os.getenv()
+TOKEN = os.getenv("DISCORD_TOKEN")
 
-# main.py
-
-# Just making this file so that I have something to clone onto my ubuntu machine. 
-# 
-#
-#  TODO: 1. Create general idea for the bot. Ideally it should have a command line that can be used within discord. 
-#           Additional functions should be used as well. 
-#  TODO 2:  Find libraries we can use for the bot. Github should have hella options. 
+if TOKEN is None:
+    raise ValueError("No Token Found.")
 
 
+intents = discord.Intents.default()
+intents.message_content = True
 
+client = commands.Bot(command_prefix="/", intents=intents)
 
-client = discord.Client(intents=intents)
+@client.event
+async def on_ready():
+    print("Ready")
+
+@client.command()
+async def test(ctx):
+    await ctx.send("Test")
+
+client.run(TOKEN)
