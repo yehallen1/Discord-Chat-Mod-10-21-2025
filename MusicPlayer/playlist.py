@@ -11,3 +11,9 @@ class Playlist:
 
     def get_len(self):
         return len(self.playlist)
+
+    def add(self, track):
+        self.playlist.append(track)
+    
+    def randomize(self):
+        random.shuffle(self.playlist)
