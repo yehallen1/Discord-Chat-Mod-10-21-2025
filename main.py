@@ -2,6 +2,7 @@ import os
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv 
+from leveling_sys import Adding_Xp
 
 # Token stuff
 load_dotenv()
@@ -23,5 +24,15 @@ async def on_ready():
 @client.command()
 async def test(ctx):
     await ctx.send("Test")
+
+@client.event
+async def on_message(message):
+    # ignore bots own messages
+    if message.author == client.user:
+        return
+
+    # fetch the user's id 
+    UserId = message.author.id
+    Adding_Xp(UserId, 10)
 
 client.run(TOKEN)
