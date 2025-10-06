@@ -37,6 +37,10 @@ async def on_message(message):
     # ignore the bots own messages
     if message.author == client.user:
         return
+    
+    # ignore '/' commands
+    if message.content.startswith("/"):
+        return
 
     # fetch the user's id 
     UserId = message.author.id
