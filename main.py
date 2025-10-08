@@ -72,6 +72,7 @@ async def on_message(message):
 async def on_member_join(member):
     # add user_id to the datbase on join
     user_id = str(member.id)
+    await lvl.auto_user(user_id)
     await member.send()
 
 @client.event
