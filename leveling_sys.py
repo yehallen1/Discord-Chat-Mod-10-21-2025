@@ -59,7 +59,7 @@ async def add_xp(UserId, Amount):
 
 
 # Add user to the database
-async def add_user(UserId):
+async def auto_user(UserId):
     async with aiosqlite.connect("level.db") as connect:
         
         # Add the user to the data base
@@ -77,7 +77,7 @@ async def print_level(UserId):
             results = await cursor.fetchone()
             
             if results: 
-                xp, level = results 
+                xp, level = results
                 return xp, level
             else:
                 return None, None
