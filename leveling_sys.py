@@ -1,15 +1,15 @@
 import aiosqlite
 
 # =================================
-# Initialize the Database
+# Initialize the Database & check
 # =================================
 async def init_db():
     async with aiosqlite.connect("level.db") as connect:
-
-        connect.execute("""
+        
+        await connect.execute("""
             CREATE TABLE IF NOT EXISTS Users (
                 UserId TEXT PRIMARY KEY,
-                XP INT DEFAULT 0,
+                Xp INT DEFAULT 0,
                 Level INT DEFAULT 1
             )
         """)
@@ -17,9 +17,15 @@ async def init_db():
         # save the changes
         await connect.commit()
 
-# ===================================
-# Check if database is initialized
-# ===================================
+        # check if the table is created
+        async with connect.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='Users'") as cursor:
+            table = await cursor.fetchone()
+
+            if table:
+                print("✅ Users table exists")
+            else:
+                print("❌ Users table not found!")
+
 
 
 # =================================
@@ -30,22 +36,23 @@ async def add_xp(UserId, Amount):
     async with aiosqlite.connect("level.db") as connect:
 
         # retrieve the xp and level using the UserID
-        async with connect.execute("SELECT XP, Level FROM Users WHERE UserId = ?", (UserId,)) as cursor:
+        async with connect.execute("SELECT Xp, Level FROM Users WHERE UserId = ?", (UserId,)) as cursor:
             result = await cursor.fetchone()     # fetch one row from the query
 
             # If the user exists
             if result:
-                XP, Level = result
-                XP += Amount
+                Xp, Level = result
+                Xp += Amount
 
                 # create a level-up depending on the amount of XP required
 
 
                 # update the database with new XP
-                cursor.execute("UPDATE Users SET XP = ?, Level = ? WHERE UserId = ?", (XP, Level, UserId))
-            # else:
-            #     # if the user doesn't exist then add them to DB
-            #     cursor.execute("INSERT INTO Users (UserId, XP) VALUES (?, ?)", (UserId, Amount))
+                await connect.execute("UPDATE Users SET Xp = ?, Level = ? WHERE UserId = ?", (Xp, Level, UserId))
+
+            else:
+                # if the user doesn't exist then add them to DB
+                await connect.execute("INSERT INTO Users (UserId, Xp) VALUES (?, ?)", (UserId, Amount))
 
             await connect.commit()
 
@@ -63,6 +70,14 @@ async def add_user(UserId):
 
 
 
-# function to print out the level
-#async def print_level(UserID):
-#    async with aiosqlite.connect("level.db") as connect:
+# function to return level and xp for printing
+async def print_level(UserId):
+    async with aiosqlite.connect("level.db") as connect:
+        async with connect.execute("SELECT Xp, Level FROM Users WHERE UserId = ?", (UserId,)) as cursor:
+            results = await cursor.fetchone()
+            
+            if results: 
+                xp, level = results 
+                return xp, level
+            else:
+                return None, None
