@@ -1,6 +1,9 @@
 import os
 import discord
+import flask_app
 import leveling_sys as lvl
+from threading import Thread
+from flask import Flask, request, jsonify, render_template
 from discord.ext import commands
 from discord import FFmpegPCMAudio
 from discord import Member
@@ -28,6 +31,19 @@ client = commands.Bot(command_prefix="/", intents=intents)
 async def on_ready():
     await lvl.init_db()
     print("Ready")
+
+    # Multithreading for Flask
+    flask_thread = Thread(target=flask_app.run_flask)
+    flask_thread.daemon = True
+    flask_thread.start()
+
+    #flask API stuff
+    file = open('guilds.txt', 'w+')
+    guilds = client.guilds
+    
+    for guild in guilds:
+        file.write(f'{guild.id}:{guild.name}\n')
+    file.close()
 
 
 @client.command()
