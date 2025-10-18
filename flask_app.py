@@ -17,4 +17,4 @@ def get_guilds():
     return guilds
 
 def run_flask():
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    app.run(host='0.0.0.0', port=5001, debug=False)

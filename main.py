@@ -18,9 +18,96 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 if TOKEN is None:
     raise ValueError("No Token Found.")
 
+class Client(commands.Bot):
+    async def on_ready(self):
+        print(f'logged in as {self.user}')
+
+        try:
+            guild = discord.Object(id=GUILD_ID)
+            synced = await self.tree.sync(guild=guild)
+            print(f'Synced {len(synced)} commands to guild {guild.id}')
+
+        except Exception as e:
+            print(f'Error syncing commands: {e}')
+
+    async def on_message(self, message):
+        if message.author == self.user:
+            return
+            
+        if message.content.startswith('hello'):
+            await message.channel.send(f'Hi there {message.author}')
+            await self.process_commands(message)
+
+
+    """async def on_reaction_add(self, reaction, user):
+        if user.bot:
+                return
+            
+        guild = reaction.message.guild
+
+        if not guild:
+            return
+            
+        if hasattr(self, "colour_role_message_id") and reaction.message.id != self.colour_role_message_id:
+            return 
+            
+        emoji = str(reaction.emoji)
+            
+        reaction_role_map = {
+            '❤️': 'Red',
+            '💙': 'Blue',
+            '💚': 'Green',
+            '💛': 'Yellow',
+            '🧡': 'Orange'
+        }
+
+        if emoji in reaction_role_map:
+            role_name = reaction_role_map[emoji]
+            role = discord.utils.get(guild.roles, name=role_name)
+
+            if role and user:
+                    await user.add_roles(role)
+                    print(f"Assigned {role_name} to {user}")
+        
+    async def on_reaction_remove(self, reaction, user):
+        if user.bot:
+            return
+            
+        guild = reaction.message.guild
+
+        if not guild:
+            return
+            
+        if hasattr(self, "colour_role_message_id") and reaction.message.id != self.colour_role_message_id:
+            return 
+            
+        emoji = str(reaction.emoji)
+            
+        reaction_role_map = {
+            '❤️': 'Red',
+            '💙': 'Blue',
+            '💚': 'Green',
+            '💛': 'Yellow',
+            '🧡': 'Orange'
+        }
+
+        if emoji in reaction_role_map:
+            role_name = reaction_role_map[emoji]
+            role = discord.utils.get(guild.roles, name=role_name)
+
+            if role and user:
+                    await user.remove_roles(role)
+                    print(f"Remove {role_name} from {user}") """
+
+
+
+
+
 
 intents = discord.Intents.default()
 intents.message_content = True
+intents.reactions = True
+intents.guilds = True
 intents.members = True
 
 client = commands.Bot(command_prefix="/", intents=intents)
@@ -30,6 +117,8 @@ client = commands.Bot(command_prefix="/", intents=intents)
 @client.event
 async def on_ready():
     await lvl.init_db()
+
+    await client.tree.sync(guild=GUILD_ID)
     print("Ready")
 
     # Multithreading for Flask
@@ -37,7 +126,7 @@ async def on_ready():
     flask_thread.daemon = True
     flask_thread.start()
 
-    #flask API stuff
+    # This creates a file guilds.txt that stores all the servers that the bot is in. 
     file = open('guilds.txt', 'w+')
     guilds = client.guilds
     
@@ -45,15 +134,118 @@ async def on_ready():
         file.write(f'{guild.id}:{guild.name}\n')
     file.close()
 
-
 @client.command()
 async def test(ctx):
     await ctx.send("Test")
 
+
+# ========================================
+# Reaction Roles
+# ========================================
+
+# React to a message to get certain roles
+
+# TODO: Change ID so that it gets it from guilds.txt 
+GUILD_ID = discord.Object(id=1415377687526248582)
+
+@client.tree.command(name="colourroles", description="Create a message that lets users pick a colour role", guild=GUILD_ID)
+async def colour_roles(interaction: discord.Interaction):
+    # Check admin
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("This command requires admin permissions.", ephemeral=True)
+        return
+    
+    # Discord requires something to respond within three seconds of it being called. 
+    # There's not really a way to make any of this quicker. This ephermeral stops discord
+    # from stopping a function before it completes
+    await interaction.response.defer(ephemeral=True)
+    
+    description = (
+        "React to this message to get your color role!\n\n"
+        "❤️ Red\n"
+        "💙 Blue\n"
+        "💚 Green\n"
+        "💛 Yellow\n"
+        "🧡 Orange\n"
+    )
+    
+    embed = discord.Embed(title="Pick your color", description=description, color=discord.Color.blurple())
+    message = await interaction.channel.send(embed=embed)
+
+    emojis = ['❤️', '💙', '💚', '💛', '🧡']
+    for emoji in emojis: 
+        await message.add_reaction(emoji)
+
+    client.colour_role_message_id = message.id
+
+    await interaction.followup.send("Colour role message created!", ephemeral=True)
+
+@client.event
+async def on_reaction_add(reaction, user):
+    if user.bot:
+        return
+    
+    guild = reaction.message.guild
+    if not guild:
+        return
+        
+    if hasattr(client, "colour_role_message_id") and reaction.message.id != client.colour_role_message_id:
+        return 
+        
+    emoji = str(reaction.emoji)
+    
+    reaction_role_map = {
+        '❤️': 'Red',
+        '💙': 'Blue',
+        '💚': 'Green',
+        '💛': 'Yellow',
+        '🧡': 'Orange'
+    }
+
+    if emoji in reaction_role_map:
+        role_name = reaction_role_map[emoji]
+        role = discord.utils.get(guild.roles, name=role_name)
+        member = guild.get_member(user.id)  # Convert User to Member
+        
+        if role and member:
+            await member.add_roles(role)
+            print(f"Assigned {role_name} to {member}")
+
+@client.event
+async def on_reaction_remove(reaction, user):
+    if user.bot:
+        return
+        
+    guild = reaction.message.guild
+    if not guild:
+        return
+        
+    if hasattr(client, "colour_role_message_id") and reaction.message.id != client.colour_role_message_id:
+        return 
+        
+    emoji = str(reaction.emoji)
+    
+    reaction_role_map = {
+        '❤️': 'Red',
+        '💙': 'Blue',
+        '💚': 'Green',
+        '💛': 'Yellow',
+        '🧡': 'Orange'
+    }
+
+    if emoji in reaction_role_map:
+        role_name = reaction_role_map[emoji]
+        role = discord.utils.get(guild.roles, name=role_name)
+        member = guild.get_member(user.id)  # Convert User to Member
+        
+        if role and member:
+            await member.remove_roles(role)
+            print(f"Removed {role_name} from {member}")
+
+
 # ========================================
 # Leveling system
-# =========================================
-
+# ======================================
 # /level command to print XP and Level
 @client.command()
 async def level(ctx):
