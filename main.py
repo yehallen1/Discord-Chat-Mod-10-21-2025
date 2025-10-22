@@ -17,6 +17,7 @@ from song import Song
 
 # Token stuff
 load_dotenv()
+
 TOKEN = os.getenv("DISCORD_TOKEN")
 
 if TOKEN is None:
@@ -410,27 +411,6 @@ async def start_playback(ctx):
 
 
 # ======= MUSIC COMMANDS =======
-
-@client.command()
-async def join(ctx):
-    """Join the user's current voice channel."""
-    if ctx.author.voice:
-        channel = ctx.author.voice.channel
-        await channel.connect()
-        await ctx.send(f"Joined `{channel}`")
-    else:
-        await ctx.send("You must be in a voice channel to use this.")
-
-
-@client.command()
-async def leave(ctx):
-    """Leave the current voice channel."""
-    if ctx.voice_client:
-        await ctx.voice_client.disconnect()
-        await ctx.send("Disconnected from voice channel.")
-    else:
-        await ctx.send("I'm not connected to a voice channel.")
-
 
 @client.command()
 async def play(ctx, *, url):
