@@ -2,6 +2,8 @@ import os
 import discord
 import flask_app
 import leveling_sys as lvl
+import asyncio
+import yt_dlp
 from threading import Thread
 from flask import Flask, request, jsonify, render_template
 from discord.ext import commands
@@ -9,6 +11,8 @@ from discord import FFmpegPCMAudio
 from discord import Member
 from discord.ext.commands import has_permissions, MissingPermissions
 from dotenv import load_dotenv 
+from playlist import Playlist
+from song import Song
 
 
 # Token stuff
@@ -332,4 +336,160 @@ async def leave(ctx):
     else:
         await ctx.send("Not in a voice channel.")
 
+
+
+playlist = Playlist()
+# ======= HELPER FUNCTION =======
+async def play_song(ctx, url):
+    """Plays a YouTube song in the voice channel."""
+    voice_client = ctx.voice_client
+    if not voice_client:
+        await ctx.send("The bot is not connected to a voice channel.")
+        return
+
+    ydl_opts = {
+        "format": "bestaudio/best",
+        "noplaylist": True,
+        "quiet": True,
+        "default_search": "ytsearch",
+        "extract_flat": "in_playlist",
+    }
+
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=False)
+        if "entries" in info:
+            info = info["entries"][0]
+        source_url = info["url"]
+        title = info.get("title", "Unknown Title")
+        uploader = info.get("uploader", "Unknown")
+        duration = info.get("duration")
+        webpage_url = info.get("webpage_url")
+        thumbnail = info.get("thumbnail")
+
+    # Create a Song instance
+    song = Song(
+        origin="YouTube",
+        host=ctx.author.name,
+        base_url=source_url,
+        uploader=uploader,
+        title=title,
+        duration=duration,
+        webpage_url=webpage_url,
+        thumbnail=thumbnail,
+    )
+
+    # Add to playlist
+    playlist.add_track(song)
+    await ctx.send(embed=song.info.format_output("Added to Queue"))
+
+    # If not already playing, start playback
+    if not voice_client.is_playing():
+        await start_playback(ctx)
+
+
+async def start_playback(ctx):
+    """Plays the next song in the playlist queue."""
+    if playlist.get_len() == 0:
+        await ctx.send("Queue is empty.")
+        return
+
+    current_song = playlist.play_next()
+    voice_client = ctx.voice_client
+    if not voice_client:
+        await ctx.send("Not connected to a voice channel.")
+        return
+
+    ffmpeg_options = {"options": "-vn"}
+    source = await discord.FFmpegOpusAudio.from_probe(current_song.base_url, **ffmpeg_options)
+    voice_client.play(
+        source,
+        after=lambda e: asyncio.run_coroutine_threadsafe(start_playback(ctx), client.loop),
+    )
+
+    await ctx.send(embed=current_song.info.format_output("Now Playing 🎵"))
+
+
+# ======= MUSIC COMMANDS =======
+@client.event
+async def on_ready():
+    print(f"✅ Logged in as {client.user}")
+
+
+@client.command()
+async def join(ctx):
+    """Join the user's current voice channel."""
+    if ctx.author.voice:
+        channel = ctx.author.voice.channel
+        await channel.connect()
+        await ctx.send(f"Joined `{channel}`")
+    else:
+        await ctx.send("You must be in a voice channel to use this.")
+
+
+@client.command()
+async def leave(ctx):
+    """Leave the current voice channel."""
+    if ctx.voice_client:
+        await ctx.voice_client.disconnect()
+        await ctx.send("Disconnected from voice channel.")
+    else:
+        await ctx.send("I'm not connected to a voice channel.")
+
+
+@client.command()
+async def play(ctx, *, url):
+    """Add a song to the queue and play it."""
+    await play_song(ctx, url)
+
+
+@client.command()
+async def skip(ctx):
+    """Skip the current song."""
+    voice_client = ctx.voice_client
+    if voice_client and voice_client.is_playing():
+        voice_client.stop()
+        await ctx.send("Skipped the current song.")
+    else:
+        await ctx.send("No song is currently playing.")
+
+
+@client.command()
+async def pause(ctx):
+    """Pause the current song."""
+    voice_client = ctx.voice_client
+    if voice_client and voice_client.is_playing():
+        voice_client.pause()
+        await ctx.send("Paused playback.")
+    else:
+        await ctx.send("Nothing is playing to pause.")
+
+
+@client.command()
+async def resume(ctx):
+    """Resume paused playback."""
+    voice_client = ctx.voice_client
+    if voice_client and voice_client.is_paused():
+        voice_client.resume()
+        await ctx.send("Resumed playback.")
+    else:
+        await ctx.send("Nothing is paused right now.")
+
+
+@client.command()
+async def queue(ctx):
+    """Show the current playlist queue."""
+    if playlist.get_len() == 0:
+        await ctx.send("The queue is empty.")
+        return
+
+    queue_list = [f"{i+1}. {s.info.title}" for i, s in enumerate(playlist.playlist)]
+    message = "\n".join(queue_list)
+    await ctx.send(f"**Current Queue:**\n{message}")
+
+@client.command()
+async def clear(ctx):
+    """Clear the playlist and history."""
+    message = playlist.clear_playlist()
+    await ctx.send(message)
+    
 client.run(TOKEN)
